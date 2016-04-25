@@ -214,7 +214,7 @@ scp_pass = raw_input('SCP user password: ')
 scp_path = "/home/cstancill/"
 content_ver = raw_input('What is the content file name? ')
 dev_count = num_of_devices
-versions = {'5.0.6':'6.0.0','6.0.0':'6.1.0','6.1.4':'7.0.1''6.1.0:7.0.1','7.0.1:7.1.0'}
+versions = {'5.0.6':'6.0.0','6.0.0':'6.1.0','6.1.4':'7.0.1''6.1.0':'7.0.1','7.0.1':'7.1.0'}
 
 
 
