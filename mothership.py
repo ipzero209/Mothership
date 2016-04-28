@@ -118,9 +118,9 @@ def get_certs(dev_IP, user, passwd, path):
     device.expect('word:')
     device.sendline('admin')
     device.expect('>+')
-    device.sendline('scp export configuration from running-config.xml to %s@192.168.1.254:%s%s.xml' % (user,path,dev_IP))
-    device.expect('connecting')
-    time.sleep(1)
+    device.sendline('scp export configuration from running-config.xml to %s@192.168.1.254:%s/%s.xml' % (user,path,dev_IP))
+    # device.expect('(yes/no)?')
+    time.sleep(3)
     device.sendline('yes')
     device.expect('word:')
     device.sendline(passwd)
@@ -199,7 +199,7 @@ def instpanos(dev_IP, panver):
     device.sendline('y')
     device.expect('>+')
     device.sendline('exit')
-    writeLog(logile, ('Installation of PAN-OS version %s started for %s\n' % (panver, dev_IP)))
+    writeLog(logfile, ('Installation of PAN-OS version %s started for %s\n' % (panver, dev_IP)))
     device.terminate(True)
 
 
@@ -209,28 +209,28 @@ def instpanos(dev_IP, panver):
 #####################################################
 
 
-logfile = open('mothersip.log', 'a')
+logfile = open('mothership.log', 'a')
 
 
-kvm_IP = raw_input('IP address of the Serial KVM: ')
-kvm_Prefix = raw_input('Enter prefix used by KVM (e.g. 70) ')
+kvm_IP = "192.168.1.253" #aw_input('IP address of the Serial KVM: ')
+kvm_Prefix = "60" #raw_input('Enter prefix used by KVM (e.g. 70) ')
 num_of_devices = raw_input('How many firewalls do you need to provision? ')
-cur_version = raw_input('What version did your firewalls ship with (e.g. 5.0.6 or 6.1.4)')
+cur_version = "5.0.6" #raw_input('What version did your firewalls ship with (e.g. 5.0.6 or 6.1.4)')
 target_version = raw_input('What version of PAN-OS do you want to move to (ex. 7.1.1)? ')
 Pano_IP = raw_input('What is your Panorama IP address? ')
 
-scp_user = raw_input('SCP user name: ')
-scp_pass = raw_input('SCP user password: ')
-scp_path = "/home/cstancill/"
-content_ver = raw_input('What is the content file name? ')
-dev_count = num_of_devices
-versions = {'5.0.6':'6.0.0','6.0.0':'6.1.0','6.1.4':'7.0.1''6.1.0':'7.0.1','7.0.1':'7.1.0'}
+scp_user = "r00t" #raw_input('SCP user name: ')
+scp_pass = "adm1n69" #raw_input('SCP user password: ')
+scp_path = "/Users/r00t/Documents/Projects/Deployment/Code/Unit_Tests"
+content_ver = "581-3295" #raw_input('What is the content file name? ')
+dev_count = int(num_of_devices)
+versions = {'5.0.6':'6.0.0','6.0.0':'6.1.0','6.1.4':'7.0.1','6.1.0':'7.0.1','7.0.1':'7.1.0'}
 
 
 
 dev_list = []
 
-
+# import pudb; pudb.set_trace()
 # Build list of device IP addresses
 i = 1
 while i <= dev_count:
@@ -240,17 +240,21 @@ while i <= dev_count:
 
 
 # Connect to each device and set mgmt & Panorama IP
+
 p = 1
-while p <= dev_count:
+for fw in dev_list:
     if ( p % 5 ) == 0:
         time.sleep(120)
     i_string = str(p)
-    k_index = i_string.zfill(2)
-    init_thread = Thread(target=setIP, args=(kvm_IP, k_index, dev_list[(p-1)], Pano_IP))
+    k_index = kvm_Prefix + i_string.zfill(2)
+    init_thread = Thread(target=setIP, args=(kvm_IP, k_index, fw, Pano_IP))
     init_thread.start()
     p += 1
 
 delay()
+
+
+
 
 # Add devices to script host known_hosts file, add script host cert to device known_hosts file
 
@@ -258,11 +262,11 @@ f = 1
 for fw in dev_list:
     if ( f % 5 ) == 0:
         time.sleep(10)
-    cert_thread = Thread(target=get_certs, args=(fw, scp_user, scp_pass))
+    cert_thread = Thread(target=get_certs, args=(fw, scp_user, scp_pass, scp_path))
     cert_thread.start()
     f += 1
 
-delay()
+time.sleep(60)
 
 # Download and install content in preparation for PAN-OS upgrades
 
@@ -289,6 +293,7 @@ while cur_version != target_version:
             delay()
         download_thread = Thread(target=getpanos, args=(fw, next_ver, scp_user, scp_pass, scp_path))
         download_thread.start()
+    time.sleep(600)
     for fw in dev_list:
         upgrade_thread = Thread(target=instpanos, args=(fw, next_ver))
         upgrade_thread.start()
