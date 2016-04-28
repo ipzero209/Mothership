@@ -15,7 +15,7 @@ import os
 #####################################################
 
 def clearScreen():
-    "Used to clear the screen"
+    """Used to clear the screen"""
     os.system('cls' if os.name == 'nt' else 'clear')
     return
 
@@ -36,18 +36,18 @@ def delay():
 
 def writeLog(f_name,logmsg):
     """Writes a message to the log file."""
-    f_name.write("%s: \t%s" % (time.ctime(time.time())), logmsg)
+    f_name.write("%s: \t%s" % (time.ctime(time.time()), logmsg))
     return
 
 #####################################################
 ## REBOOTS THE DEVICES
 #####################################################
 
-def rebootFW(fw_IP):
+def rebootFW(dev_IP):
     """Reboots the firewall."""
-    logstr = "Interfacing with " + str(fw_IP)
-    writeLog(logfile, logstr)
-    device = pexpect.spawn('ssh admin@%s' % fw_IP)
+    logstr = "Interfacing with " + str(dev_IP) + "\n"
+    writeLog(logfile, ("Interfacing with " + str(dev_IP) + "\n"))
+    device = pexpect.spawn('ssh admin@%s' % dev_IP)
     device.expect('word:')
     device.sendline('admin')
     device.expect('>+')
@@ -55,10 +55,10 @@ def rebootFW(fw_IP):
     device.expect('continue?')
     time.sleep(1)
     device.sendline('y')
-    device.expect('>+')
-    device.sendline('exit')
-    logstr = "Reboot of " + str(fw_IP) + " completed."
-    writeLog(logfile, logstr)
+    device.expect('down for reboot NOW')
+    device.terminate(True)
+    logstr = "Reboot of " + str(dev_IP) + " completed.\n"
+    writeLog(logfile, ("Reboot of " + str(dev_IP) + " completed.\n"))
     return
 
 #####################################################
@@ -68,25 +68,35 @@ def rebootFW(fw_IP):
 def setIP(kvm, index, dev_IP, Pano_IP):
     """Sets the device management and Panorama server IP addresses via console connection
     and commits the changes."""
-    logstr = "Setting IP " + str(dev_IP) + " on device connected to port " + str(index)
-    writeLog(logfile, logstr)
-    device = pexpect.spawn('telnet admin@%s:%s' % (kvm, index))
+    logstr = "Setting IP " + str(dev_IP) + " on device connected to port " + str(index) + "\n"
+    writeLog(logfile, ("Setting IP " + str(dev_IP) + " on device connected to port " + str(index) + "\n"))
+    device = pexpect.spawn('telnet %s %s' % (kvm, index))
+    device.sendline('\n')
+    device.expect('ogin:')
+    device.sendline('admin')
     device.expect('word:')
     device.sendline('admin')
     device.expect('>+')
     device.sendline('configure')
-    device.expect('#+')
+    # device.expect('[edit]')
+    time.sleep(3)
     command = "set deviceconfig system ip-address " + str(dev_IP) + " netmask 255.255.255.0 default-gateway 192.168.1.254"
     device.sendline(command)
-    device.expect('#+')
+    # device.expect('#+')
+    time.sleep(3)
     command = "set deviceconfig system panorama-server " + str(Pano_IP)
     device.sendline(command)
-    device.expect('#+')
+    # device.expect('#+')
+    time.sleep(3)
     device.sendline('commit')
+    time.sleep(5)
     device.sendline('\003')
-    logstr = "Mgmt and Panorama IPs added for device on port " + str(index) + ". Commit in progress."
-    writeLog(logfile, logstr)
-    time.sleep(60)
+    device.expect('#+')
+    device.sendline('exit')
+    device.expect('>+')
+    device.sendline('exit')
+    logstr = "Mgmt and Panorama IPs added for device on port " + str(index) + ". Commit in progress." + "\n"
+    writeLog(logfile, ("Mgmt and Panorama IPs added for device on port " + str(index) + ". Commit in progress." + "\n"))
     device.terminate(True)
     return
 
@@ -96,11 +106,11 @@ def setIP(kvm, index, dev_IP, Pano_IP):
 ## GET DEVICE CERTIFICATES
 #####################################################
 
-def get_certs(dev_IP, user, passwd):
+def get_certs(dev_IP, user, passwd, path):
     """Initial connection to get certs into known_hosts files so that we don't need to account for fingerprint
-    warnings every time we connect."""
-    logstr = "Connecting to " + str(dev_IP)
-    writeLog(logfile, logstr)
+    warnings on subsequent connections."""
+    logstr = "Connecting to " + str(dev_IP) + "\n"
+    writeLog(logfile, ("Connecting to " + str(dev_IP) + "\n"))
     device = pexpect.spawn('ssh admin@%s' % dev_IP)
     device.expect('connecting')
     time.sleep(1)
@@ -108,7 +118,7 @@ def get_certs(dev_IP, user, passwd):
     device.expect('word:')
     device.sendline('admin')
     device.expect('>+')
-    device.sendline('scp export configuration from running-config.xml to %s@192.168.1.254:/' % user)
+    device.sendline('scp export configuration from running-config.xml to %s@192.168.1.254:%s%s.xml' % (user,path,dev_IP))
     device.expect('connecting')
     time.sleep(1)
     device.sendline('yes')
@@ -116,8 +126,8 @@ def get_certs(dev_IP, user, passwd):
     device.sendline(passwd)
     device.expect('>+')
     device.sendline('exit')
-    logstr = "Certificate for " + str(dev_IP) + " added to ~/.ssh/known_hosts"
-    writeLog(logfile, logstr)
+    logstr = "Certificate for " + str(dev_IP) + " added to ~/.ssh/known_hosts\n"
+    writeLog(logfile, ("Certificate for " + str(dev_IP) + " added to ~/.ssh/known_hosts\n"))
     device.terminate(True)
 
 #####################################################
@@ -126,19 +136,19 @@ def get_certs(dev_IP, user, passwd):
 
 def getContent(dev_IP, content, user, passwd, path):
     """Downloads and installs content in preparation for PAN-OS upgrades."""
-    writeLog(logfile, "Initiating download an install of content on %s" % dev_IP)
+    writeLog(logfile, ("Initiating download an install of content on %s\n" % dev_IP))
     device = pexpect.spawn('ssh admin@%s' % str(dev_IP))
     device.expect('word:')
     device.sendline('admin')
     device.expect('>+')
-    device.sendline('scp import content from %s@192.168.1.254:%s%s' % (user, path, content))
+    device.sendline('scp import content from %s@192.168.1.254:%s/%s' % (user, path, content))
     device.expect('word:')
     device.sendline(passwd)
     device.expect('>+')
     device.sendline('request content upgrade install file %s' % content)
     device.expect('>+')
     device.sendline('exit')
-    writeLog(logfile, "Content download and install complete for %s" % )
+    writeLog(logfile, ("Content download and install complete for %s\n" % dev_IP))
     device.terminate(True)
 
 
@@ -147,12 +157,12 @@ def getContent(dev_IP, content, user, passwd, path):
 ## PAN-OS DOWNLOAD
 #####################################################
 
-def getpanos(dev_IP, panver, user, passwd):
+def getpanos(dev_IP, panver, user, passwd, path):
     """Downloads a specified version of PAN-OS and loads it into the
     software repository."""
-    logstr = "Initiating download of PAN-OS version " + str(panver)
-    writeLog(logfile, logstr)
-    command = "scp import software from %s@192.168.1.1:/%s" % (user, panver)
+    logstr = "Initiating download of PAN-OS version " + str(panver) + "\n"
+    writeLog(logfile, ("Initiating download of PAN-OS version " + str(panver) + "\n"))
+    command = "scp import software from %s@192.168.1.254:%s/%s" % (user, path, panver)
     device = pexpect.spawn('ssh admin@%s' % str(dev_IP))
     device.expect('word:')
     device.sendline('admin')
@@ -164,8 +174,8 @@ def getpanos(dev_IP, panver, user, passwd):
     command = "debug swm load image %s" % panver
     device.sendline(command)
     device.expect('>+', timeout=None)
-    logstr = "PAN-OS version " + str(panver) + " has been downloaded and loaded into the repository on " + str(dev_IP)
-    writeLog(logfile, logstr)
+    logstr = "PAN-OS version " + str(panver) + " has been downloaded and loaded into the repository on " + str(dev_IP) + "\n"
+    writeLog(logfile, ("PAN-OS version " + str(panver) + " has been downloaded and loaded into the repository on " + str(dev_IP) + "\n"))
     device.sendline('exit')
     device.terminate(True)
 
@@ -177,8 +187,8 @@ def getpanos(dev_IP, panver, user, passwd):
 
 def instpanos(dev_IP, panver):
     """Installs the specified version of PAN-OS."""
-    logstr = "Initiating installation of PAN-OS version " + str(panver) + " on " + str(dev_IP)
-    writeLog(logfile, logstr)
+    logstr = "Initiating installation of PAN-OS version " + str(panver) + " on " + str(dev_IP) + "\n"
+    writeLog(logfile, ("Initiating installation of PAN-OS version " + str(panver) + " on " + str(dev_IP) + "\n"))
     device = pexpect.spawn('ssh admin@%s' % dev_IP)
     device.expect('word:')
     device.sendline('admin')
@@ -189,7 +199,7 @@ def instpanos(dev_IP, panver):
     device.sendline('y')
     device.expect('>+')
     device.sendline('exit')
-    writeLog('Installation of PAN-OS version %s started for %s' % (panver, dev_IP))
+    writeLog(logile, ('Installation of PAN-OS version %s started for %s\n' % (panver, dev_IP)))
     device.terminate(True)
 
 
@@ -199,7 +209,7 @@ def instpanos(dev_IP, panver):
 #####################################################
 
 
-logfile = open('hivelog.txt', 'w+')
+logfile = open('mothersip.log', 'a')
 
 
 kvm_IP = raw_input('IP address of the Serial KVM: ')
@@ -224,7 +234,7 @@ dev_list = []
 # Build list of device IP addresses
 i = 1
 while i <= dev_count:
-    ip_str = '192.168.1.' + str(list_count)
+    ip_str = '192.168.1.' + str(i)
     dev_list.append(ip_str)
     i += 1
 
@@ -232,11 +242,12 @@ while i <= dev_count:
 # Connect to each device and set mgmt & Panorama IP
 p = 1
 while p <= dev_count:
-    if ( p % 5 ) = 0:
+    if ( p % 5 ) == 0:
         time.sleep(120)
     i_string = str(p)
-    k_index = str(kvm_IP) + i_string.zfill(2)
-    init_thread = Thread(target=setIP, args=(kvm_IP, k_index, dev_list[p-1], Pano_IP))
+    k_index = i_string.zfill(2)
+    init_thread = Thread(target=setIP, args=(kvm_IP, k_index, dev_list[(p-1)], Pano_IP))
+    init_thread.start()
     p += 1
 
 delay()
@@ -245,18 +256,22 @@ delay()
 
 f = 1
 for fw in dev_list:
-    if ( f % 5 ) = 0:
+    if ( f % 5 ) == 0:
         time.sleep(10)
-    cert_thread = Thread(target=get_certs, args=(dev_list(fw), scp_user, scp_pass))
+    cert_thread = Thread(target=get_certs, args=(fw, scp_user, scp_pass))
+    cert_thread.start()
     f += 1
+
+delay()
 
 # Download and install content in preparation for PAN-OS upgrades
 
 c = 1
 for fw in dev_list:
-    if ( c % 5 ) = 0:
+    if ( c % 5 ) == 0:
         time.sleep(60)
-    content_thread = Thread(target=getContent, args=(dev_list(fw), content_ver, scp_user, scp_pass, scp_path))
+    content_thread = Thread(target=getContent, args=(fw, content_ver, scp_user, scp_pass, scp_path))
+    content_thread.start()
     c +=1
 
 delay()
@@ -264,14 +279,22 @@ delay()
 # Upgrade through required versions to get to target version
 
 while cur_version != target_version:
-    if cur_version[0:2] == target_version[0:2]:
+    if cur_version[0:3] == target_version[0:3]:
         next_ver = target_version
     else:
-        next_ver = versions(cur_version)
+        next_ver = versions[cur_version]
+    d = 1
     for fw in dev_list:
-        upgrade_thread = Thread(target=instpanos, args=(dev_list(fw), next_ver))
+        if ( d % 5 ) == 0:
+            delay()
+        download_thread = Thread(target=getpanos, args=(fw, next_ver, scp_user, scp_pass, scp_path))
+        download_thread.start()
+    for fw in dev_list:
+        upgrade_thread = Thread(target=instpanos, args=(fw, next_ver))
+        upgrade_thread.start()
     time.sleep(600)
     for fw in dev_list:
-        reboot_thread = Thread(target=rebootFW, args=dev_list(fw))
+        reboot_thread = Thread(target=rebootFW, args=(fw,))
+        reboot_thread.start()
     time.sleep(1200)
     cur_version = next_ver
