@@ -217,7 +217,7 @@ def instpanos(dev_IP, panver):
 logging.basicConfig(filename="mothership.log", format=' %(asctime)s %(levelname)s:\t\t%(message)s', level=logging.DEBUG)
 
 kvm_IP = "192.168.1.253" #raw_input('IP address of the Serial KVM: ')
-kvm_Prefix = "60" #raw_input('Enter prefix used by KVM (e.g. 70) ')
+kvm_Prefix = raw_input('Enter prefix used by KVM (e.g. 70) ')
 num_of_devices = raw_input('How many firewalls do you need to provision? ')
 cur_version = raw_input('What version did your firewalls ship with (e.g. 5.0.6 or 6.1.4)')
 target_version = raw_input('What version of PAN-OS do you want to move to (ex. 7.1.1)? ')
