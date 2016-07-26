@@ -1,6 +1,6 @@
 # Mothership
 
-Purpose: Provision mulitiple Palo Alto Networks firewalls via serial console server and SSH. This version can be considered a development version, no testing has been completed yet. Once testing is complete, this readme will be updated with detailed instructions.
+Purpose: Provision mulitiple Palo Alto Networks firewalls via serial console server and SSH. This version can be considered a development version, initial testing has been completed. This works as-is. Future features have not been tested.
 
 
 Requirements: 
